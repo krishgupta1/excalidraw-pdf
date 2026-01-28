@@ -3,32 +3,20 @@ import chromium from '@sparticuz/chromium';
 import puppeteerCore from 'puppeteer-core';
 import JSON5 from 'json5';
 
-// ---------------- Your Helper Functions ---------------- //
+// ---------------- Helper Functions ---------------- //
 
 function extractBalancedJSON(text) {
   let start = text.indexOf("{");
   if (start === -1) throw new Error("No JSON object start found");
-
-  let depth = 0;
-  let inString = false;
-  let stringChar = "";
-  let escaped = false;
-
+  let depth = 0; let inString = false; let stringChar = ""; let escaped = false;
   for (let i = start; i < text.length; i++) {
     const c = text[i];
     if (inString) {
-      if (escaped) escaped = false;
-      else if (c === "\\") escaped = true;
-      else if (c === stringChar) inString = false;
+      if (escaped) escaped = false; else if (c === "\\") escaped = true; else if (c === stringChar) inString = false;
       continue;
     }
-    if (c === '"' || c === "'") {
-      inString = true;
-      stringChar = c;
-      continue;
-    }
-    if (c === "{") depth++;
-    if (c === "}") depth--;
+    if (c === '"' || c === "'") { inString = true; stringChar = c; continue; }
+    if (c === "{") depth++; if (c === "}") depth--;
     if (depth === 0) return text.slice(start, i + 1);
   }
   throw new Error("Unbalanced JSON: could not recover object");
@@ -51,7 +39,6 @@ function generateRoughPaths(points, roughness) {
     main += ` L ${points[i][0]} ${points[i][1]}`;
   }
   paths.push(main);
-
   if (roughness > 0) {
     const layers = Math.min(2, Math.ceil(roughness));
     for (let l = 0; l < layers; l++) {
@@ -66,149 +53,62 @@ function generateRoughPaths(points, roughness) {
   return paths;
 }
 
-// ---------------- Main API Handler ---------------- //
+// ---------------- Main Handler ---------------- //
 
 export async function POST(req) {
   let browser = null;
   
   try {
-    // 1. Read the uploaded file text
     const text = await req.text();
-    
-    // 2. Parse using your "Hardcore" recovery
     const cleanedText = text.replace(/^\uFEFF/, "").replace(/\0/g, "");
     const jsonText = extractBalancedJSON(cleanedText);
     const scene = JSON5.parse(jsonText);
-
     const elements = scene.elements || [];
     const files = scene.files || {};
 
-    if (!elements.length) {
-      return NextResponse.json({ error: "No elements found in file" }, { status: 400 });
-    }
+    if (!elements.length) return NextResponse.json({ error: "No elements found" }, { status: 400 });
 
-    // 3. Calculate Dimensions & Scale
+    // Calculation logic
     const minX = Math.min(...elements.map(e => e.x)) - 50;
     const minY = Math.min(...elements.map(e => e.y)) - 50;
     const maxX = Math.max(...elements.map(e => e.x + (e.width || 0))) + 50;
     const maxY = Math.max(...elements.map(e => e.y + (e.height || 0))) + 50;
-
     const rawWidth = maxX - minX;
     const rawHeight = maxY - minY;
     
-    const MAX_WIDTH = 2000; 
-    const MAX_HEIGHT = 3000;
-
-    const scale = Math.min(
-      rawWidth / rawHeight > MAX_WIDTH / MAX_HEIGHT
-        ? MAX_WIDTH / rawWidth
-        : MAX_HEIGHT / rawHeight,
-      0.4 
-    );
-
+    const MAX_WIDTH = 2000; const MAX_HEIGHT = 3000;
+    const scale = Math.min(rawWidth / rawHeight > MAX_WIDTH / MAX_HEIGHT ? MAX_WIDTH / rawWidth : MAX_HEIGHT / rawHeight, 0.4);
     const width = Math.ceil(rawWidth * scale);
     const height = Math.ceil(rawHeight * scale);
     const s = v => Math.round(v * scale);
-    const offsetX = -minX;
-    const offsetY = -minY;
+    const offsetX = -minX; const offsetY = -minY;
 
-    // 4. Render Elements Logic
     function renderElement(el) {
-      const base = `
-        position:absolute;
-        left:${s(el.x + offsetX)}px;
-        top:${s(el.y + offsetY)}px;
-        opacity:${(el.opacity ?? 100) / 100};
-      `;
-
-      if (el.type === "text") {
-        return `<div style="${base}
-          width:${s(el.width)}px;
-          height:${s(el.height)}px;
-          color:${el.strokeColor};
-          font-size:${s(el.fontSize)}px;
-          font-family:${getFontFamily(el.fontFamily)};
-          white-space:pre;">${el.text || ""}</div>`;
-      }
-
-      if (el.type === "rectangle" || el.type === "ellipse") {
-        return `<div style="${base}
-          width:${s(el.width)}px;
-          height:${s(el.height)}px;
-          border:${Math.max(1, s(el.strokeWidth))}px solid ${el.strokeColor};
-          background:${el.backgroundColor || "transparent"};
-          ${el.type === "ellipse" ? "border-radius:50%;" : ""}"></div>`;
-      }
-
+      const base = `position:absolute;left:${s(el.x + offsetX)}px;top:${s(el.y + offsetY)}px;opacity:${(el.opacity ?? 100) / 100};`;
+      if (el.type === "text") return `<div style="${base}width:${s(el.width)}px;height:${s(el.height)}px;color:${el.strokeColor};font-size:${s(el.fontSize)}px;font-family:${getFontFamily(el.fontFamily)};white-space:pre;">${el.text || ""}</div>`;
+      if (el.type === "rectangle" || el.type === "ellipse") return `<div style="${base}width:${s(el.width)}px;height:${s(el.height)}px;border:${Math.max(1, s(el.strokeWidth))}px solid ${el.strokeColor};background:${el.backgroundColor || "transparent"};${el.type === "ellipse" ? "border-radius:50%;" : ""}"></div>`;
       if (el.type === "freedraw") {
-        const pts = el.points;
-        if (!pts?.length) return "";
-        const xs = pts.map(p => p[0]);
-        const ys = pts.map(p => p[1]);
-        const minX = Math.min(...xs);
-        const minY = Math.min(...ys);
-        const w = Math.max(...xs) - minX;
-        const h = Math.max(...ys) - minY;
-
-        const paths = generateRoughPaths(
-          pts.map(([x, y]) => [x - minX, y - minY]),
-          el.roughness ?? 1
-        );
-
-        return `<svg style="position:absolute;
-          left:${s(el.x + offsetX + minX)}px;
-          top:${s(el.y + offsetY + minY)}px;"
-          width="${s(w)}" height="${s(h)}"
-          viewBox="0 0 ${w} ${h}">
-          ${paths.map(d =>
-            `<path d="${d}" fill="none"
-              stroke="${el.strokeColor}"
-              stroke-width="${(el.strokeWidth ?? 1) * scale}"
-              stroke-linecap="round"/>`
-          ).join("")}
-        </svg>`;
+        const pts = el.points; if (!pts?.length) return "";
+        const xs = pts.map(p => p[0]); const ys = pts.map(p => p[1]);
+        const minX = Math.min(...xs); const minY = Math.min(...ys);
+        const w = Math.max(...xs) - minX; const h = Math.max(...ys) - minY;
+        const paths = generateRoughPaths(pts.map(([x, y]) => [x - minX, y - minY]), el.roughness ?? 1);
+        return `<svg style="position:absolute;left:${s(el.x + offsetX + minX)}px;top:${s(el.y + offsetY + minY)}px;" width="${s(w)}" height="${s(h)}" viewBox="0 0 ${w} ${h}">${paths.map(d => `<path d="${d}" fill="none" stroke="${el.strokeColor}" stroke-width="${(el.strokeWidth ?? 1) * scale}" stroke-linecap="round"/>`).join("")}</svg>`;
       }
-
-      if (el.type === "image") {
-        const file = files[el.fileId];
-        if (!file?.dataURL) return "";
-        return `<img style="${base}
-          width:${s(el.width)}px;
-          height:${s(el.height)}px;
-          object-fit:contain;"
-          src="${file.dataURL}" />`;
-      }
+      if (el.type === "image") { const file = files[el.fileId]; if (!file?.dataURL) return ""; return `<img style="${base}width:${s(el.width)}px;height:${s(el.height)}px;object-fit:contain;" src="${file.dataURL}" />`; }
       return "";
     }
 
-    const htmlContent = `
-      <html>
-        <body style="margin:0;background:${scene.appState?.viewBackgroundColor || "#fff"}">
-          <div style="position:relative;width:${width}px;height:${height}px">
-            ${elements.map(renderElement).join("")}
-          </div>
-        </body>
-      </html>
-    `;
+    const htmlContent = `<html><body style="margin:0;background:${scene.appState?.viewBackgroundColor || "#fff"}"><div style="position:relative;width:${width}px;height:${height}px">${elements.map(renderElement).join("")}</div></body></html>`;
 
-    // 5. Launch Puppeteer (Universal: Local or Vercel)
-    // We check process.env.VERCEL to know if we are on the cloud
-    if (process.env.VERCEL) {
-      // VERCEL: Use puppeteer-core + sparticuz/chromium
-      browser = await puppeteerCore.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-      });
-    } else {
-      // LOCAL (Dev or Production build on laptop): Use full puppeteer
-      const { default: puppeteer } = await import("puppeteer");
-      browser = await puppeteer.launch({
-        args: ['--no-sandbox'],
-        headless: true,
-      });
-    }
+    // 🚀 VERCEL CONFIGURATION
+    // Only loads the lightweight browser for Vercel
+    browser = await puppeteerCore.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
 
     const page = await browser.newPage();
     await page.setViewport({ width, height });
@@ -221,24 +121,15 @@ export async function POST(req) {
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
     });
 
-    await browser.close();
-    browser = null; // Prevent double close in finally block
-
-    // 6. Return the PDF
     return new NextResponse(pdfBuffer, {
       status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="converted.pdf"',
-      },
+      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="converted.pdf"' },
     });
 
   } catch (e) {
-    console.error("Conversion Error:", e);
+    console.error("Vercel Conversion Error:", e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    if (browser) await browser.close();
   }
 }
