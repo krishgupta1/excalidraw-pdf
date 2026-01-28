@@ -1,157 +1,193 @@
-'use client';
+"use client";
 
-import { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef } from "react";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<'idle' | 'converting' | 'success' | 'error'>('idle'); 
-  const [errorMessage, setErrorMessage] = useState('');
+  const [status, setStatus] = useState<
+    "idle" | "converting" | "success" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  // Handle file selection
   const handleFile = (selectedFile: File | undefined) => {
-    if (selectedFile && selectedFile.name.endsWith('.excalidraw')) {
+    if (selectedFile && selectedFile.name.endsWith(".excalidraw")) {
       setFile(selectedFile);
-      setStatus('idle');
-      setErrorMessage('');
+      setStatus("idle");
+      setErrorMessage("");
     } else {
-      setErrorMessage('Please upload a valid .excalidraw file');
-    }
-  };
-
-  const onDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragActive(true);
-  };
-
-  const onDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragActive(false);
-  };
-
-  const onDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+      setErrorMessage("Please upload a valid .excalidraw file.");
     }
   };
 
   const handleConvert = async () => {
     if (!file) return;
-
-    setStatus('converting');
-    setErrorMessage('');
+    setStatus("converting");
+    setErrorMessage("");
 
     try {
       const text = await file.text();
-
-      const response = await fetch('/api/convert', {
-        method: 'POST',
+      const response = await fetch("/api/convert", {
+        method: "POST",
         body: text,
       });
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.error || 'Conversion failed');
+        throw new Error(errData.error || "Conversion failed");
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = file.name.replace('.excalidraw', '.pdf');
+      a.download = file.name.replace(".excalidraw", ".pdf");
       document.body.appendChild(a);
       a.click();
       a.remove();
-      
-      setStatus('success');
-      setTimeout(() => setStatus('idle'), 3000); // Reset after 3s
+
+      setStatus("success");
+      setTimeout(() => setStatus("idle"), 3000);
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.message || 'An unexpected error occurred');
-      setStatus('error');
+      setErrorMessage(err.message || "Something went wrong. Please try again.");
+      setStatus("error");
     }
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1 className="title">Excalidraw to PDF</h1>
-        <p className="subtitle">Convert your sketches into crisp PDFs instantly.</p>
+    <div className="page-wrapper">
+      {/* --- NAVBAR --- */}
+      <nav className="navbar">
+        <div className="logo">
+          <span style={{ color: "var(--primary)", fontSize: "1.8rem" }}>✦</span>
+          <span>Excalidraw to PDF</span>
+        </div>
+        <div className="credits">
+          Created by{" "}
+          <a
+            href="https://www.linkedin.com/in/krishgupta7/"
+            target="_blank"
+            className="link"
+          >
+            Krish
+          </a>
+          {" & "}
+          <a
+            href="https://www.linkedin.com/in/sahilmishra03/"
+            target="_blank"
+            className="link"
+          >
+            Sahil
+          </a>
+        </div>
+      </nav>
 
-        {/* Drag & Drop Zone */}
-        <div 
-          className={`drop-zone ${dragActive ? 'drag-active' : ''}`}
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <span className="icon">📄</span>
-          <p style={{ margin: 0, fontWeight: 500 }}>
-            {file ? 'Change File' : 'Click or Drag file here'}
+      {/* --- MAIN CONTENT --- */}
+      <main className="main-container">
+        {/* HEADER SECTION */}
+        <div className="header-section">
+          <h1 className="hero-title">
+            Turn your <span className="highlight">sketches</span>
+            <br />
+            into polished documents.
+          </h1>
+          <p className="hero-subtitle">
+            Simple, free, and secure conversion.
+            <br />
+            Keep the hand-crafted feel, lose the hassle.
           </p>
-          <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-            Supports .excalidraw files
-          </p>
-          <input 
-            type="file" 
-            accept=".excalidraw" 
-            ref={fileInputRef}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleFile(e.target.files?.[0])}
-            className="hidden-input"
-          />
         </div>
 
-        {/* File Details (Visible only when file selected) */}
-        {file && (
-          <div className="file-info">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-              <span style={{ fontSize: '1.2rem' }}>📝</span>
-              <div style={{ textAlign: 'left', minWidth: 0 }}>
-                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
-                  {file.name}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                  {(file.size / 1024).toFixed(1)} KB
-                </div>
-              </div>
-            </div>
-            <button 
-              onClick={(e) => { e.stopPropagation(); setFile(null); }}
-              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.2rem' }}
+        {/* UPLOAD "SKETCHPAD" SECTION */}
+        <div className="upload-wrapper">
+          {/* Decorative Badge (Replaces Arrow) */}
+          {!file && <div className="badge-decoration">Drag & Drop Here</div>}
+
+          <div className="sketchpad-card">
+            <div
+              className={`drop-area ${dragActive ? "active" : ""}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragActive(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setDragActive(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragActive(false);
+                if (e.dataTransfer.files?.[0])
+                  handleFile(e.dataTransfer.files[0]);
+              }}
+              onClick={() => !file && fileInputRef.current?.click()}
             >
-              ×
-            </button>
-          </div>
-        )}
+              <input
+                type="file"
+                accept=".excalidraw"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
 
-        {/* Action Button */}
-        <button 
-          className="btn" 
-          onClick={handleConvert}
-          disabled={!file || status === 'converting'}
-        >
-          {status === 'converting' ? (
-            <>
-              <span className="spinner"></span> Converting...
-            </>
-          ) : status === 'success' ? (
-            'Downloaded! 🎉'
-          ) : (
-            'Convert to PDF'
+              {/* LOGIC: SHOW UPLOAD UI OR FILE UI */}
+              {!file ? (
+                <>
+                  <div className="icon-large">📄</div>
+                  <h3 className="drop-title hand-font">
+                    Click or drag a file here
+                  </h3>
+                  <p className="drop-subtitle">
+                    Supports .excalidraw files
+                  </p>
+                </>
+              ) : (
+                <div className="file-state">
+                  <div className="file-info">
+                    <span>{file.name}</span>
+                    <button
+                      className="btn-remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <button
+                    className="action-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleConvert();
+                    }}
+                    disabled={status === "converting"}
+                  >
+                    {status === "converting"
+                      ? "Converting..."
+                      : status === "success"
+                        ? "Converted Successfully 🎉"
+                        : "Convert to PDF"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* STATUS MESSAGES */}
+          {errorMessage && (
+            <div className="status-msg error">⚠️ {errorMessage}</div>
           )}
-        </button>
-
-        {/* Error Message */}
-        {errorMessage && (
-          <div className="error-msg">
-            ⚠️ {errorMessage}
-          </div>
-        )}
-      </div>
+          {status === "success" && (
+            <div className="status-msg success">
+              File downloaded successfully!
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

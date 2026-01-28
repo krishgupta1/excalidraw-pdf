@@ -1,11 +1,8 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   // This tells Next.js NOT to bundle these packages
-  // We include both flags to be safe across different Next.js versions
   serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
-  experimental: {
-    serverComponentsExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
-  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
