@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import chromium from '@sparticuz/chromium';
-import puppeteerCore from 'puppeteer-core';
+import puppeteer from 'puppeteer-core';
 import JSON5 from 'json5';
+
+// Force the font to be absolute to avoid loading issues in serverless
+const fontUrl = "https://fonts.gstatic.com/s/roboto/v27/KFOmCnqEu92Fr1Mu4mxK.woff2";
 
 // ---------------- Helper Functions ---------------- //
 
@@ -68,7 +71,6 @@ export async function POST(req) {
 
     if (!elements.length) return NextResponse.json({ error: "No elements found" }, { status: 400 });
 
-    // Calculation logic
     const minX = Math.min(...elements.map(e => e.x)) - 50;
     const minY = Math.min(...elements.map(e => e.y)) - 50;
     const maxX = Math.max(...elements.map(e => e.x + (e.width || 0))) + 50;
@@ -101,13 +103,16 @@ export async function POST(req) {
 
     const htmlContent = `<html><body style="margin:0;background:${scene.appState?.viewBackgroundColor || "#fff"}"><div style="position:relative;width:${width}px;height:${height}px">${elements.map(renderElement).join("")}</div></body></html>`;
 
-    // 🚀 VERCEL CONFIGURATION
-    // Only loads the lightweight browser for Vercel
-    browser = await puppeteerCore.launch({
+    // 🚀 VERCEL CONFIGURATION (Static Import + Specific Args)
+    // We configure the graphics explicitly for serverless
+    chromium.setGraphicsMode = false;
+    
+    browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
 
     const page = await browser.newPage();
