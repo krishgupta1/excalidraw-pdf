@@ -69,6 +69,8 @@ function generateRoughPaths(points, roughness) {
 // ---------------- Main API Handler ---------------- //
 
 export async function POST(req) {
+  let browser = null;
+  
   try {
     // 1. Read the uploaded file text
     const text = await req.text();
@@ -94,7 +96,6 @@ export async function POST(req) {
     const rawWidth = maxX - minX;
     const rawHeight = maxY - minY;
     
-    // Using slightly smaller max for web performance
     const MAX_WIDTH = 2000; 
     const MAX_HEIGHT = 3000;
 
@@ -191,21 +192,21 @@ export async function POST(req) {
     `;
 
     // 5. Launch Puppeteer (Universal: Local or Vercel)
-    let browser;
-    if (process.env.NODE_ENV === 'development') {
-      // Local: Use full puppeteer (auto-downloads chrome)
-      const { default: puppeteer } = await import("puppeteer");
-      browser = await puppeteer.launch({
-        args: ['--no-sandbox'],
-        headless: true,
-      });
-    } else {
-      // Production: Use puppeteer-core + sparticuz/chromium
+    // We check process.env.VERCEL to know if we are on the cloud
+    if (process.env.VERCEL) {
+      // VERCEL: Use puppeteer-core + sparticuz/chromium
       browser = await puppeteerCore.launch({
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(),
         headless: chromium.headless,
+      });
+    } else {
+      // LOCAL (Dev or Production build on laptop): Use full puppeteer
+      const { default: puppeteer } = await import("puppeteer");
+      browser = await puppeteer.launch({
+        args: ['--no-sandbox'],
+        headless: true,
       });
     }
 
@@ -221,6 +222,7 @@ export async function POST(req) {
     });
 
     await browser.close();
+    browser = null; // Prevent double close in finally block
 
     // 6. Return the PDF
     return new NextResponse(pdfBuffer, {
@@ -232,7 +234,11 @@ export async function POST(req) {
     });
 
   } catch (e) {
-    console.error(e);
+    console.error("Conversion Error:", e);
     return NextResponse.json({ error: e.message }, { status: 500 });
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }

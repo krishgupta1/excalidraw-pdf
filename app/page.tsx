@@ -1,20 +1,50 @@
-// app/page.js
 'use client';
-import { useState } from 'react';
+
+import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 
 export default function Home() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<'idle' | 'converting' | 'success' | 'error'>('idle'); 
+  const [errorMessage, setErrorMessage] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Handle file selection
+  const handleFile = (selectedFile: File | undefined) => {
+    if (selectedFile && selectedFile.name.endsWith('.excalidraw')) {
+      setFile(selectedFile);
+      setStatus('idle');
+      setErrorMessage('');
+    } else {
+      setErrorMessage('Please upload a valid .excalidraw file');
+    }
+  };
+
+  const onDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const onDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleConvert = async () => {
     if (!file) return;
 
-    setLoading(true);
-    setError('');
+    setStatus('converting');
+    setErrorMessage('');
 
     try {
-      // Read file as text to send raw content
       const text = await file.text();
 
       const response = await fetch('/api/convert', {
@@ -27,7 +57,6 @@ export default function Home() {
         throw new Error(errData.error || 'Conversion failed');
       }
 
-      // Create a blob from the PDF response and trigger download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -36,29 +65,93 @@ export default function Home() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setLoading(false);
+      
+      setStatus('success');
+      setTimeout(() => setStatus('idle'), 3000); // Reset after 3s
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err.message || 'An unexpected error occurred');
+      setStatus('error');
     }
   };
 
   return (
-    <div style={{ padding: '50px', fontFamily: 'sans-serif', textAlign: 'center' }}>
-      <h1>Excalidraw to PDF</h1>
-      <p>Select your <code>.excalidraw</code> file to convert.</p>
-      
-      <div style={{ marginTop: '20px' }}>
-        <input 
-          type="file" 
-          accept=".excalidraw" 
-          onChange={handleFileUpload} 
-          disabled={loading}
-        />
-      </div>
+    <div className="container">
+      <div className="card">
+        <h1 className="title">Excalidraw to PDF</h1>
+        <p className="subtitle">Convert your sketches into crisp PDFs instantly.</p>
 
-      {loading && <p style={{ color: 'blue' }}>Converting... (this may take a few seconds)</p>}
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+        {/* Drag & Drop Zone */}
+        <div 
+          className={`drop-zone ${dragActive ? 'drag-active' : ''}`}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <span className="icon">📄</span>
+          <p style={{ margin: 0, fontWeight: 500 }}>
+            {file ? 'Change File' : 'Click or Drag file here'}
+          </p>
+          <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+            Supports .excalidraw files
+          </p>
+          <input 
+            type="file" 
+            accept=".excalidraw" 
+            ref={fileInputRef}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => handleFile(e.target.files?.[0])}
+            className="hidden-input"
+          />
+        </div>
+
+        {/* File Details (Visible only when file selected) */}
+        {file && (
+          <div className="file-info">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+              <span style={{ fontSize: '1.2rem' }}>📝</span>
+              <div style={{ textAlign: 'left', minWidth: 0 }}>
+                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
+                  {file.name}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  {(file.size / 1024).toFixed(1)} KB
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setFile(null); }}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.2rem' }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Action Button */}
+        <button 
+          className="btn" 
+          onClick={handleConvert}
+          disabled={!file || status === 'converting'}
+        >
+          {status === 'converting' ? (
+            <>
+              <span className="spinner"></span> Converting...
+            </>
+          ) : status === 'success' ? (
+            'Downloaded! 🎉'
+          ) : (
+            'Convert to PDF'
+          )}
+        </button>
+
+        {/* Error Message */}
+        {errorMessage && (
+          <div className="error-msg">
+            ⚠️ {errorMessage}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
