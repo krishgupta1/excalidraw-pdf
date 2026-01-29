@@ -8,10 +8,10 @@
     "start": "next start"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^143.0.4",
+    "@sparticuz/chromium": "123.0.1",
     "json5": "^2.2.3",
     "next": "16.1.6",
-    "puppeteer-core": "^24.36.1",
+    "puppeteer-core": "22.7.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
@@ -21,8 +21,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
-    "puppeteer": "^24.36.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "puppeteer": "22.7.1"
   }
 }
