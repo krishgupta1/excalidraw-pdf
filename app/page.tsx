@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -10,6 +10,67 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
+
+  // Load state from localStorage on component mount
+  useEffect(() => {
+    const savedFileData = localStorage.getItem("excalidraw-pdf-file");
+    const savedStatus = localStorage.getItem("excalidraw-pdf-status");
+    const savedError = localStorage.getItem("excalidraw-pdf-error");
+
+    if (savedFileData) {
+      try {
+        const fileData = JSON.parse(savedFileData);
+        // Create a File object from saved data
+        const file = new File([fileData.content], fileData.name, {
+          type: fileData.type
+        });
+        setFile(file);
+      } catch (error) {
+        console.error("Failed to load saved file:", error);
+        localStorage.removeItem("excalidraw-pdf-file");
+      }
+    }
+
+    if (savedStatus) {
+      setStatus(savedStatus as "idle" | "converting" | "success" | "error");
+    }
+
+    if (savedError) {
+      setErrorMessage(savedError);
+    }
+  }, []);
+
+  // Save file state to localStorage whenever it changes
+  useEffect(() => {
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const fileData = {
+          name: file.name,
+          type: file.type,
+          content: reader.result
+        };
+        localStorage.setItem("excalidraw-pdf-file", JSON.stringify(fileData));
+      };
+      reader.readAsText(file);
+    } else {
+      localStorage.removeItem("excalidraw-pdf-file");
+    }
+  }, [file]);
+
+  // Save status state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("excalidraw-pdf-status", status);
+  }, [status]);
+
+  // Save error message to localStorage whenever it changes
+  useEffect(() => {
+    if (errorMessage) {
+      localStorage.setItem("excalidraw-pdf-error", errorMessage);
+    } else {
+      localStorage.removeItem("excalidraw-pdf-error");
+    }
+  }, [errorMessage]);
 
   const handleFile = (selectedFile: File | undefined) => {
     if (selectedFile && selectedFile.name.endsWith(".excalidraw")) {
@@ -48,7 +109,6 @@ export default function Home() {
       a.remove();
 
       setStatus("success");
-      setTimeout(() => setStatus("idle"), 3000);
     } catch (err: any) {
       console.error(err);
       setErrorMessage(err.message || "Something went wrong. Please try again.");
