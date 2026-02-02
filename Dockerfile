@@ -1,9 +1,15 @@
 FROM node:20-slim
 
-# Install Chromium system dependencies
+# Install Chromium system dependencies and fonts
 RUN apt-get update && apt-get install -y \
   ca-certificates \
   fonts-liberation \
+  fonts-dejavu-core \
+  fonts-liberation2 \
+  fonts-noto-color-emoji \
+  fonts-roboto \
+  fonts-open-sans \
+  fontconfig \
   libasound2 \
   libatk-bridge2.0-0 \
   libatk1.0-0 \
