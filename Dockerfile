@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y \
   fonts-roboto \
   fonts-open-sans \
   fontconfig \
-  ttf-mscorefonts-installer \
   wget \
   libasound2 \
   libatk-bridge2.0-0 \
