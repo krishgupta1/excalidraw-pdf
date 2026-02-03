@@ -41,7 +41,7 @@ function extractBalancedJSON(text: string) {
 
 function getFontFamily(element: any, customFonts: Map<string, string>) {
   const defaultFonts = {
-    1: 'Comic Sans MS, Marker Felt, cursive',
+    1: 'Kalam, Caveat, Comic Neue, Virgil, Comic Sans MS, Marker Felt, cursive',
     2: 'Helvetica, Arial, sans-serif',
     3: 'Courier New, monospace',
     4: 'Georgia, serif',
@@ -53,7 +53,7 @@ function getFontFamily(element: any, customFonts: Map<string, string>) {
     `${element.fontFamily}-${element.customFontFamily}` : 
     `${element.fontFamily}`;
   
-  const resolvedFont = customFonts.get(fontKey) || defaultFonts[element.fontFamily] || 'Comic Sans MS, Marker Felt, cursive';
+  const resolvedFont = customFonts.get(fontKey) || defaultFonts[element.fontFamily] || 'Kalam, Caveat, Comic Neue, Virgil, Comic Sans MS, Marker Felt, cursive';
   
   return resolvedFont;
 }
@@ -253,11 +253,19 @@ export async function POST(req: NextRequest) {
 
     const googleFontLinks = googleFontUrls.map(url => `<link rel="stylesheet" href="${url}">`).join('\n');
     
+    // Add handwritten fonts from Google Fonts
+    const handwrittenFontLinks = `
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Caveat:wght@400;700&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    `;
+    
     const html = `
       <html>
         <head>
           <style>body{margin:0;padding:0;}</style>
           ${googleFontLinks}
+          ${handwrittenFontLinks}
           <style>
             /* Force handwritten styling for all text elements */
             * {
@@ -305,12 +313,12 @@ export async function POST(req: NextRequest) {
             
             /* Force handwritten styling for text elements */
             div[style*="font-family"] {
-              font-family: 'Comic Sans MS', 'Marker Felt', cursive !important;
+              font-family: 'Kalam', 'Caveat', 'Comic Neue', 'Virgil', 'Comic Sans MS', 'Marker Felt', cursive !important;
             }
             
             /* Specific override for elements that should be handwritten */
             .handwritten {
-              font-family: 'Comic Sans MS', 'Marker Felt', cursive !important;
+              font-family: 'Kalam', 'Caveat', 'Comic Neue', 'Virgil', 'Comic Sans MS', 'Marker Felt', cursive !important;
             }
           </style>
         </head>
@@ -319,17 +327,27 @@ export async function POST(req: NextRequest) {
             ${elements.map(renderElement).join('')}
           </div>
           <script>
-            // Simplified font loading - use system fonts only
+            // Enhanced font loading for Google Fonts
             function waitForFonts() {
-              console.log('Using system fonts only - no external loading needed');
+              console.log('Loading Google Fonts for handwritten styling...');
               
-              // Small delay to ensure DOM is ready
-              return new Promise(resolve => setTimeout(resolve, 1000));
+              if (document.fonts && document.fonts.ready) {
+                console.log('Using document.fonts.ready API');
+                return document.fonts.ready.then(function() {
+                  console.log('document.fonts.ready resolved');
+                  // Additional wait for font rendering
+                  return new Promise(resolve => setTimeout(resolve, 2000));
+                });
+              } else {
+                console.log('Using fallback timeout for Google Fonts');
+                // Fallback for older browsers - increased timeout for Google Fonts
+                return new Promise(resolve => setTimeout(resolve, 4000));
+              }
             }
             
-            // Force Comic Sans MS as primary handwritten font
+            // Force Google handwritten fonts
             function forceHandwrittenStyling() {
-              console.log('Forcing Comic Sans MS on all text elements...');
+              console.log('Forcing Google handwritten fonts on all text elements...');
               const allDivs = document.querySelectorAll('div[style*="font-family"]');
               console.log('Found', allDivs.length, 'text elements to style');
               
@@ -337,8 +355,8 @@ export async function POST(req: NextRequest) {
                 const currentStyle = div.getAttribute('style');
                 console.log('Element', index, 'current style:', currentStyle);
                 
-                // Force Comic Sans MS as most reliable handwritten font
-                const newStyle = currentStyle.replace(/font-family:[^;]*/g, 'font-family: Comic Sans MS, Marker Felt, cursive');
+                // Force Google handwritten fonts
+                const newStyle = currentStyle.replace(/font-family:[^;]*/g, 'font-family: Kalam, Caveat, Comic Neue, Virgil, Comic Sans MS, Marker Felt, cursive');
                 div.setAttribute('style', newStyle);
                 
                 console.log('Element', index, 'updated style:', newStyle);
@@ -390,19 +408,19 @@ export async function POST(req: NextRequest) {
     
     await page.setContent(html, { waitUntil: 'networkidle0' });
     
-    // Wait for styling to apply
+    // Wait for Google Fonts to load
     try {
       await page.waitForFunction(
         () => document.body.classList.contains('fonts-loaded'),
-        { timeout: 5000 }
+        { timeout: 15000 }
       );
-      console.log('Styling completed successfully');
+      console.log('Google Fonts loading completed successfully');
     } catch (e) {
-      console.warn('Styling timeout, proceeding with PDF generation:', e);
+      console.warn('Google Fonts loading timeout, proceeding with PDF generation:', e);
     }
     
-    // Additional wait to ensure fonts are rendered
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Additional wait to ensure Google Fonts are rendered
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     const pdf = await page.pdf({
       width: `${width}px`,
