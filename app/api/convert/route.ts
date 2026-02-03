@@ -41,7 +41,7 @@ function extractBalancedJSON(text: string) {
 
 function getFontFamily(element: any, customFonts: Map<string, string>) {
   const defaultFonts = {
-    1: 'Virgil, Comic Sans MS, Marker Felt, cursive',
+    1: 'Comic Sans MS, Marker Felt, cursive',
     2: 'Helvetica, Arial, sans-serif',
     3: 'Courier New, monospace',
     4: 'Georgia, serif',
@@ -53,7 +53,7 @@ function getFontFamily(element: any, customFonts: Map<string, string>) {
     `${element.fontFamily}-${element.customFontFamily}` : 
     `${element.fontFamily}`;
   
-  const resolvedFont = customFonts.get(fontKey) || defaultFonts[element.fontFamily] || 'Virgil, Comic Sans MS, Marker Felt, cursive';
+  const resolvedFont = customFonts.get(fontKey) || defaultFonts[element.fontFamily] || 'Comic Sans MS, Marker Felt, cursive';
   
   return resolvedFont;
 }
@@ -305,12 +305,12 @@ export async function POST(req: NextRequest) {
             
             /* Force handwritten styling for text elements */
             div[style*="font-family"] {
-              font-family: 'Virgil', 'Comic Sans MS', 'Marker Felt', cursive !important;
+              font-family: 'Comic Sans MS', 'Marker Felt', cursive !important;
             }
             
             /* Specific override for elements that should be handwritten */
             .handwritten {
-              font-family: 'Virgil', 'Comic Sans MS', 'Marker Felt', cursive !important;
+              font-family: 'Comic Sans MS', 'Marker Felt', cursive !important;
             }
           </style>
         </head>
@@ -327,9 +327,9 @@ export async function POST(req: NextRequest) {
               return new Promise(resolve => setTimeout(resolve, 1000));
             }
             
-            // Force Virgil font as primary handwritten font
+            // Force Comic Sans MS as primary handwritten font
             function forceHandwrittenStyling() {
-              console.log('Forcing Virgil font on all text elements...');
+              console.log('Forcing Comic Sans MS on all text elements...');
               const allDivs = document.querySelectorAll('div[style*="font-family"]');
               console.log('Found', allDivs.length, 'text elements to style');
               
@@ -337,8 +337,8 @@ export async function POST(req: NextRequest) {
                 const currentStyle = div.getAttribute('style');
                 console.log('Element', index, 'current style:', currentStyle);
                 
-                // Force Virgil as primary handwritten font
-                const newStyle = currentStyle.replace(/font-family:[^;]*/g, 'font-family: Virgil, Comic Sans MS, Marker Felt, cursive');
+                // Force Comic Sans MS as most reliable handwritten font
+                const newStyle = currentStyle.replace(/font-family:[^;]*/g, 'font-family: Comic Sans MS, Marker Felt, cursive');
                 div.setAttribute('style', newStyle);
                 
                 console.log('Element', index, 'updated style:', newStyle);
