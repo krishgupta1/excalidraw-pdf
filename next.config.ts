@@ -1,5 +1,3 @@
 module.exports = {
-  experimental: {
-    serverComponentsExternalPackages: ['@sparticuz/chromium'],
-  },
+  serverExternalPackages: ['@sparticuz/chromium'],
 };
