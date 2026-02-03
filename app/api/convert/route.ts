@@ -41,7 +41,7 @@ function extractBalancedJSON(text: string) {
 
 function getFontFamily(element: any, customFonts: Map<string, string>) {
   const defaultFonts = {
-    1: 'Comic Neue, Kalam, Caveat, Virgil, "Comic Sans MS", "Marker Felt", cursive',
+    1: 'Comic Sans MS, Marker Felt, cursive',
     2: 'Helvetica, Arial, sans-serif',
     3: 'Courier New, monospace',
     4: 'Georgia, serif',
@@ -53,11 +53,11 @@ function getFontFamily(element: any, customFonts: Map<string, string>) {
     `${element.fontFamily}-${element.customFontFamily}` : 
     `${element.fontFamily}`;
   
-  const resolvedFont = customFonts.get(fontKey) || defaultFonts[element.fontFamily] || 'Comic Neue, Kalam, Caveat, "Comic Sans MS", cursive';
+  const resolvedFont = customFonts.get(fontKey) || defaultFonts[element.fontFamily] || 'Comic Sans MS, Marker Felt, cursive';
   
-  // For fontFamily 1 (Virgil), always force handwritten styling
+  // For fontFamily 1 (Virgil), always force Comic Sans MS for reliability
   if (element.fontFamily === 1) {
-    return 'Comic Neue, Kalam, Caveat, Virgil, "Comic Sans MS", "Marker Felt", cursive';
+    return 'Comic Sans MS, Marker Felt, cursive';
   }
   
   return resolvedFont;
@@ -270,21 +270,38 @@ export async function POST(req: NextRequest) {
               -moz-osx-font-smoothing: grayscale;
             }
             
-            /* Font loading fallbacks - Use system fonts as primary, web fonts as backup */
+            /* Use local system fonts only - no external dependencies */
             @font-face {
-              font-family: 'Virgil';
-              src: local('Comic Sans MS'), local('Marker Felt'), local('Bradley Hand'), local('Kalam'), local('Caveat'), cursive;
+              font-family: 'Comic Neue';
+              src: local('Comic Neue'), local('Comic Sans MS'), local('Marker Felt'), cursive;
               font-weight: normal;
               font-style: normal;
-              font-display: swap;
+              font-display: block;
             }
             
-            /* Load Comic Neue as strong fallback for handwritten look */
-            @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+            @font-face {
+              font-family: 'Kalam';
+              src: local('Kalam'), local('Comic Sans MS'), cursive;
+              font-weight: normal;
+              font-style: normal;
+              font-display: block;
+            }
             
-            /* Additional handwritten fallbacks */
-            @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap');
-            @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap');
+            @font-face {
+              font-family: 'Caveat';
+              src: local('Caveat'), local('Comic Sans MS'), cursive;
+              font-weight: normal;
+              font-style: normal;
+              font-display: block;
+            }
+            
+            @font-face {
+              font-family: 'Virgil';
+              src: local('Virgil'), local('Comic Sans MS'), local('Marker Felt'), local('Bradley Hand'), cursive;
+              font-weight: normal;
+              font-style: normal;
+              font-display: block;
+            }
             
             /* Ensure fonts are loaded */
             body {
@@ -293,12 +310,12 @@ export async function POST(req: NextRequest) {
             
             /* Force handwritten styling for text elements */
             div[style*="font-family"] {
-              font-family: 'Comic Neue', 'Kalam', 'Caveat', 'Virgil', 'Comic Sans MS', 'Marker Felt', cursive !important;
+              font-family: 'Comic Sans MS', 'Marker Felt', cursive !important;
             }
             
             /* Specific override for elements that should be handwritten */
             .handwritten {
-              font-family: 'Comic Neue', 'Kalam', 'Caveat', 'Virgil', 'Comic Sans MS', 'Marker Felt', cursive !important;
+              font-family: 'Comic Sans MS', 'Marker Felt', cursive !important;
             }
           </style>
         </head>
@@ -307,27 +324,17 @@ export async function POST(req: NextRequest) {
             ${elements.map(renderElement).join('')}
           </div>
           <script>
-            // Enhanced font loading detection with debugging
+            // Simplified font loading - use system fonts only
             function waitForFonts() {
-              console.log('Starting font loading detection...');
+              console.log('Using system fonts only - no external loading needed');
               
-              if (document.fonts && document.fonts.ready) {
-                console.log('Using document.fonts.ready API');
-                return document.fonts.ready.then(function() {
-                  console.log('document.fonts.ready resolved');
-                  // Additional wait for font rendering - increased for production
-                  return new Promise(resolve => setTimeout(resolve, 2000));
-                });
-              } else {
-                console.log('Using fallback timeout');
-                // Fallback for older browsers - increased timeout
-                return new Promise(resolve => setTimeout(resolve, 6000));
-              }
+              // Small delay to ensure DOM is ready
+              return new Promise(resolve => setTimeout(resolve, 1000));
             }
             
-            // Force handwritten styling on all text elements
+            // Force Comic Sans MS as reliable handwritten font
             function forceHandwrittenStyling() {
-              console.log('Forcing handwritten styling on all text elements...');
+              console.log('Forcing Comic Sans MS on all text elements...');
               const allDivs = document.querySelectorAll('div[style*="font-family"]');
               console.log('Found', allDivs.length, 'text elements to style');
               
@@ -335,8 +342,8 @@ export async function POST(req: NextRequest) {
                 const currentStyle = div.getAttribute('style');
                 console.log('Element', index, 'current style:', currentStyle);
                 
-                // Force handwritten font family - prioritize Google Fonts
-                const newStyle = currentStyle.replace(/font-family:[^;]*/g, 'font-family: Comic Neue, Kalam, Caveat, Virgil, "Comic Sans MS", "Marker Felt", cursive');
+                // Force Comic Sans MS as most reliable handwritten font
+                const newStyle = currentStyle.replace(/font-family:[^;]*/g, 'font-family: Comic Sans MS, Marker Felt, cursive');
                 div.setAttribute('style', newStyle);
                 
                 console.log('Element', index, 'updated style:', newStyle);
@@ -344,32 +351,13 @@ export async function POST(req: NextRequest) {
             }
             
             waitForFonts().then(function() {
-              console.log('Fonts loaded, applying handwritten styling...');
+              console.log('Applying handwritten styling...');
               forceHandwrittenStyling();
               
               document.body.classList.add('fonts-loaded');
-              console.log('Fonts loaded and ready - PDF generation can proceed');
-              
-              // Debug: Log available fonts
-              if (document.fonts) {
-                console.log('Available fonts:', Array.from(document.fonts).map(f => f.family));
-              }
-              
-              // Additional verification: Check if Comic Neue font is actually loaded
-              const testElement = document.createElement('div');
-              testElement.style.fontFamily = 'Comic Neue';
-              testElement.style.position = 'absolute';
-              testElement.style.left = '-9999px';
-              testElement.innerHTML = 'test';
-              document.body.appendChild(testElement);
-              
-              const computedStyle = window.getComputedStyle(testElement);
-              const actualFont = computedStyle.fontFamily;
-              console.log('Actual font applied:', actualFont);
-              
-              document.body.removeChild(testElement);
+              console.log('Handwritten styling applied - PDF generation ready');
             }).catch(function(error) {
-              console.error('Font loading error:', error);
+              console.error('Styling error:', error);
               forceHandwrittenStyling(); // Force styling even on error
               document.body.classList.add('fonts-loaded');
             });
@@ -407,20 +395,19 @@ export async function POST(req: NextRequest) {
     
     await page.setContent(html, { waitUntil: 'networkidle0' });
     
-    // Wait for fonts to load
+    // Wait for styling to apply
     try {
       await page.waitForFunction(
         () => document.body.classList.contains('fonts-loaded'),
-        { timeout: 15000 }
+        { timeout: 5000 }
       );
-      console.log('Font loading completed successfully');
+      console.log('Styling completed successfully');
     } catch (e) {
-      // If font loading times out, continue anyway
-      console.warn('Font loading timeout, proceeding with PDF generation:', e);
+      console.warn('Styling timeout, proceeding with PDF generation:', e);
     }
     
-    // Additional wait to ensure fonts are rendered - increased for production
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Additional wait to ensure fonts are rendered
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     const pdf = await page.pdf({
       width: `${width}px`,
