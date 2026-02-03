@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y \
 
 # Download and install Virgil font
 RUN mkdir -p /usr/share/fonts/truetype/virgil \
-  && wget -O /usr/share/fonts/truetype/virgil/Virgil.woff2 https://cdn.jsdelivr.net/gh/excalidraw/excalidraw@master/packages/excalidraw/assets/font/Virgil.woff2 \
-  && wget -O /usr/share/fonts/truetype/virgil/Virgil.woff https://cdn.jsdelivr.net/gh/excalidraw/excalidraw@master/packages/excalidraw/assets/font/Virgil.woff \
+  && wget -O /usr/share/fonts/truetype/virgil/Virgil.woff2 https://raw.githubusercontent.com/excalidraw/excalidraw/master/packages/excalidraw/assets/font/Virgil.woff2 \
+  && wget -O /usr/share/fonts/truetype/virgil/Virgil.woff https://raw.githubusercontent.com/excalidraw/excalidraw/master/packages/excalidraw/assets/font/Virgil.woff \
   && fc-cache -fv
 
 WORKDIR /app
